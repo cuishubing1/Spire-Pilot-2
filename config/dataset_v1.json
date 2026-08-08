@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_version": "sts2-v0.107.1-ironclad-a0-v1",
+  "game_dir": "C:\\path\\to\\Slay the Spire 2",
+  "game_version": "v0.107.1",
+  "steam_build_id": "23811903",
+  "game_commit": "59260271",
+  "main_assembly_hash": -1555940892,
+  "sts2_dll_sha256": "A1F9E653F1E28E4076558FEE1E60D218619CB7E057B887C6417F62C62C6D7A52",
+  "sts2_cli_url": "https://github.com/wuhao21/sts2-cli",
+  "sts2_cli_commit": "d11aa883b582dd68bd39b331f3370746b30d447e",
+  "sts2_cli_protocol": "0.2.0",
+  "character": "Ironclad",
+  "ascension": 0,
+  "policy_id": "heuristic_v1",
+  "max_steps": 2000,
+  "required_natural_runs": 20,
+  "required_phases": [
+    "bundle_select",
+    "map_select",
+    "combat_play",
+    "card_select",
+    "card_reward",
+    "event_choice",
+    "rest_site",
+    "shop",
+    "treasure",
+    "boss_reward",
+    "game_over"
+  ]
+}
