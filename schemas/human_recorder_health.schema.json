@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/sts2/human-recorder-health-0.1.0.schema.json",
+  "type": "object",
+  "required": ["generation", "schema_version", "recorder_version", "status", "updated_at"],
+  "properties": {
+    "generation": {"type": "integer", "minimum": 1},
+    "schema_version": {"const": "human-recorder-health-0.1.0"},
+    "recorder_version": {"type": "string"},
+    "status": {"enum": ["ready", "recording", "disabled"]},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "run_id": {"type": ["string", "null"]},
+    "partial_path": {"type": ["string", "null"]},
+    "last_error": {"type": ["string", "null"]},
+    "writer_metrics": {"type": ["object", "null"]},
+    "storage_root": {"type": "string"},
+    "storage_mode": {"enum": ["environment_override", "portable_mod_directory", "local_app_data_fallback"]},
+    "storage_fallback_reason": {"type": ["string", "null"]},
+    "hook_manifest": {"type": "array"}
+  }
+}

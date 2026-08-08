@@ -1,0 +1,12 @@
+{
+  "id": "HumanRecorder",
+  "name": "Human Dataset Recorder",
+  "author": "STS2 World Model Project",
+  "description": "Records player-visible states and semantic decisions as an append-only JSONL dataset.",
+  "version": "0.5.3-internal",
+  "min_game_version": "0.107.1",
+  "has_pck": false,
+  "has_dll": true,
+  "dependencies": [],
+  "affects_gameplay": false
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/sts2/raw-record-1.0.0.schema.json",
+  "title": "STS2 raw run record",
+  "type": "object",
+  "required": ["schema_version", "record_type", "run_id", "sequence_no", "timestamp_utc"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "record_type": {
+      "enum": ["run_start", "engine_exchange", "decision", "auto_transition", "run_end", "fixture"]
+    },
+    "run_id": {"type": "string", "minLength": 1},
+    "sequence_no": {"type": "integer", "minimum": 0},
+    "timestamp_utc": {"type": "string"}
+  },
+  "additionalProperties": true
+}
+

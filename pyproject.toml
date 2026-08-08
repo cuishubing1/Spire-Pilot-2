@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sts2-dataset"
+version = "0.1.0"
+description = "Version-locked Slay the Spire 2 decision dataset collector"
+requires-python = ">=3.9"
+dependencies = [
+  "jsonschema==4.23.0",
+  "pyarrow==16.1.0",
+  "zstandard==0.23.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.5"]
+
+[project.scripts]
+sts2-data = "sts2_dataset.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

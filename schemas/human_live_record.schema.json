@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/sts2/human-live-record-0.4.1.schema.json",
+  "title": "HumanRecorder append-only record",
+  "type": "object",
+  "required": ["record_type", "sequence", "timestamp_utc", "prev_record_sha256", "payload", "record_sha256"],
+  "properties": {
+    "record_type": {
+      "enum": ["recorder_start", "run_start", "decision", "engine_event", "resume", "rollback",
+        "resume_unmatched", "session_resume", "session_end", "run_end"]
+    },
+    "sequence": {"type": "integer", "minimum": 0},
+    "timestamp_utc": {"type": "string", "format": "date-time"},
+    "prev_record_sha256": {"$ref": "#/$defs/sha256"},
+    "record_sha256": {"$ref": "#/$defs/sha256"},
+    "payload": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"record_type": {"const": "recorder_start"}}},
+      "then": {
+        "properties": {
+          "payload": {
+            "required": ["schema_version", "recorder_version", "actor_id", "game", "environment", "hook_manifest", "privacy"],
+            "properties": {
+              "schema_version": {"const": "human-live-0.4.1"},
+              "recorder_version": {"type": "string"},
+              "actor_id": {"type": "string"},
+              "game": {"type": "object"},
+              "environment": {"type": "object"},
+              "hook_manifest": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["type", "method", "phase", "action_id", "required", "status"]
+                }
+              },
+              "privacy": {"type": "object"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "decision"}}},
+      "then": {
+        "properties": {
+          "payload": {
+            "required": ["run_id", "step_id", "attempt_id", "phase", "observation", "action",
+              "audit_state", "capture_quality", "content_scope", "policy_id", "commit_status", "telemetry"],
+            "properties": {
+              "run_id": {"type": "string", "minLength": 1},
+              "step_id": {"type": "integer", "minimum": 0},
+              "attempt_id": {"type": "integer", "minimum": 0},
+              "phase": {"type": "string", "minLength": 1},
+              "capture_quality": {"enum": ["complete", "partial"]},
+              "content_scope": {"enum": ["base_game", "modded", "unknown"]},
+              "policy_id": {"const": "human_v4"},
+              "commit_status": {"enum": ["invoked", "method_returned", "committed", "failed"]},
+              "observation": {"type": "object"},
+              "audit_state": {"type": "object"},
+              "action": {
+                "type": "object",
+                "required": ["action_id", "args"],
+                "properties": {
+                  "action_id": {"type": "string", "minLength": 1},
+                  "args": {"type": "object"}
+                }
+              },
+              "telemetry": {
+                "type": "object",
+                "required": ["capture_ms", "observation_ms", "audit_ms", "encode_and_classify_ms", "fingerprint_ms", "writer_queue_depth"],
+                "properties": {
+                  "capture_ms": {"type": "number", "minimum": 0},
+                  "observation_ms": {"type": "number", "minimum": 0},
+                  "audit_ms": {"type": "number", "minimum": 0},
+                  "encode_and_classify_ms": {"type": "number", "minimum": 0},
+                  "fingerprint_ms": {"type": "number", "minimum": 0},
+                  "writer_queue_depth": {"type": ["integer", "null"], "minimum": 0}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
