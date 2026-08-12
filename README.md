@@ -1,9 +1,39 @@
-# STS2 Dataset V1
+# Spire Pilot 2
+
+面向《杀戮尖塔 2》的非 LLM、结构化状态决策项目。整体方向由两部分组成：
+
+- **战斗 Agent**：从玩家可见的结构化战斗状态出发，学习合法动作策略、战斗价值与风险。
+- **局外 World Model / Planner**：建模抓牌、路线、商店、事件和资源选择的长期影响，并据此规划。
+
+当前最成熟的部分是数据基础设施：`HumanRecorder` 人工对局采集 Mod、数据
+Schema、版本门禁、审计与导出工具。战斗 Agent 和局外 World Model 尚处于设计与
+基线建设阶段，不能将规划中的模型能力表述为已经实现。
 
 > 本仓库只保存项目原创源码、测试、Schema 与构建脚本，不包含《杀戮尖塔 2》
 > 游戏本体、反编译产物、玩家对局数据或预编译 Mod。使用前需要合法拥有游戏，
 > 并在本机配置游戏目录。普通玩家安装说明见
 > [`mods/HumanRecorder/README.md`](mods/HumanRecorder/README.md)。
+
+## Repository layout
+
+```text
+Spire-Pilot-2/
+├─ agents/combat/       # 战斗 Agent：策略、价值、风险与搜索（建设中）
+├─ world_model/         # 局外 World Model 与长期规划（设计中）
+├─ mods/HumanRecorder/  # 人工对局数据采集 Mod
+├─ src/sts2_dataset/    # 数据导入、规范化、审计与导出
+├─ schemas/             # 原始记录与健康状态 Schema
+├─ config/              # 版本锁定与数据集配置
+├─ tools/               # 构建、验证和诊断工具
+├─ tests/               # 自动化测试
+└─ docs/                # 项目设计文档
+```
+
+详细项目边界与阶段目标见
+[`PROJECT_HANDOFF.zh-CN.md`](PROJECT_HANDOFF.zh-CN.md)。玩家原始对局数据属于
+私有、不可变证据，不纳入公开仓库。
+
+## Data foundation
 
 Reproducible data preparation for **Slay the Spire 2 v0.107.1** using the real
 game engine through a pinned `sts2-cli` adapter.

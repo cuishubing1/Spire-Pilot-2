@@ -17,6 +17,7 @@ artifacts/
 testarxiv/
 *.jsonl
 *.jsonl.partial
+人工数据/
 *.zst
 *.parquet
 *.checkpoint
