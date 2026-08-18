@@ -57,6 +57,21 @@ The pipeline deliberately separates two views:
 `smoke` is a hard gate. Collection refuses to start if the game version, DLL
 hash, engine protocol, checkpoint, or deterministic restore checks fail.
 
+## sts2-cli simulator feasibility gate
+
+The pinned v0.107.1 headless adapter can now be built, regression-tested and
+benchmarked with one command:
+
+```powershell
+.\tools\test_sts2_cli.cmd
+```
+
+This currently validates real-engine sequential combat actions and room-level
+checkpoint recovery. It does **not** claim action-level state cloning or
+MCTS-ready branching. See
+[`docs/sts2-cli-simulator-gate.zh-CN.md`](docs/sts2-cli-simulator-gate.zh-CN.md)
+for the measured throughput and known timeout paths.
+
 ## Collect and export
 
 For a formal build, use the unified gated pipeline:
@@ -170,6 +185,11 @@ Import sealed recordings and validate the derived human partition:
 
 & .\.venv\Scripts\sts2-data.exe import-human "$env:LOCALAPPDATA\SlayTheSpire2\HumanRecorder\inbox"
 & .\.venv\Scripts\sts2-data.exe validate-human
+& .\.venv\Scripts\sts2-data.exe build-combat-dataset
+& .\.venv\Scripts\sts2-data.exe validate-combat-dataset
+& .\.venv\Scripts\sts2-data.exe build-combat-examples
+& .\.venv\Scripts\sts2-data.exe validate-combat-examples
+& .\.venv\Scripts\sts2-data.exe build-combat-vocab
 ```
 
 `audit-human` reports action and phase counts plus any missing stable action
@@ -188,6 +208,49 @@ to keep complete canonical base-content transitions, or the stricter
 Partial and detected Mod-content decisions remain auditable in Parquet but are
 isolated from both training views. Pass `--reject-partial` when an import should
 fail instead of isolating incomplete decisions.
+
+`import-human` is append-only and idempotent. It indexes every sealed run by
+`run_id` and source SHA-256, fully parses only new recordings, preserves the
+immutable compressed raw copy, and rejects a reused `run_id` whose bytes differ.
+Existing aggregate Parquet files are atomically replaced after new rows are
+appended.
+
+`build-combat-dataset` derives the Ironclad combat-policy view under
+`data/human/combat_v1/`. A combat is identified by its run and room locator, so
+all actions from one combat—including canonical actions after a reload—remain in
+one split. Test is an explicit full-run holdout: every combat from a configured
+test `run_id` stays in test. After those runs are removed, train and validation
+are formed at combat level, separately within Act 1, Act 2 and Act 3. New
+non-test combats fill the per-Act train/validation deficits without moving
+existing assignments. Use `--rebuild` only when the split configuration or
+derivation contract intentionally changes.
+
+`build-combat-examples` projects the audited combat rows into the frozen
+Combat Observation V0 and dynamic-candidate Combat Action V0 contracts. It
+removes engine/source/localization metadata, retains opaque instance references
+only for binding actions to hand cards, potions and enemies, and exports the
+unique human legal-candidate index as the behavior-cloning label. The output is
+incremental and lives under `data/human/combat_v1/model_v0/`.
+
+`build-combat-vocab` scans only the training split and creates an append-stable
+entity vocabulary. Card identity is shared across hand/draw/discard/exhaust
+zones, while zone type remains a separate feature. The NumPy tensorizer emits
+variable-length entity sets, dynamic legal-action references and masks; it does
+not require PyTorch and can be wrapped by the training DataLoader.
+
+`CombatPolicyTransformer` is the first executable policy baseline: a shared
+4-layer, 128-dimensional entity Transformer followed by a scorer over the
+current legal candidates. The scorer binds each candidate to its source and
+target entity and masks padded candidates before behavior-cloning loss. PyTorch
+is kept as the optional `train` dependency so data preparation remains light.
+The model uses only fields projected by Combat Observation V0; its first
+full-data offline baseline and limitations are documented in
+[`docs/combat-policy-v0.zh-CN.md`](docs/combat-policy-v0.zh-CN.md).
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e ".[train]"
+& .\.venv\Scripts\sts2-train.exe
+```
 
 Recorder 0.5.3-internal stores audit-only run provenance under `run_start.run_context`:
 the original and numeric seed, character IDs, ascension, game mode, act IDs,

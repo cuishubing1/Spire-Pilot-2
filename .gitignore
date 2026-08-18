@@ -6,6 +6,9 @@ sts2-cli.zip
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.tmp/
+pytest-of-Administrator/
+sts2_fixed_plan_*/
 build/
 dist/
 bin/

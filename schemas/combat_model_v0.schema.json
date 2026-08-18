@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2/combat-model-v0.schema.json",
+  "title": "Spire Pilot 2 Combat Model Sample V0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "global",
+    "hand",
+    "piles",
+    "enemies",
+    "relics",
+    "potions",
+    "player_powers",
+    "orbs"
+  ],
+  "properties": {
+    "schema_version": {"const": "combat-observation-0.1.0"},
+    "global": {"type": "object"},
+    "hand": {"type": "array", "items": {"type": "object"}},
+    "piles": {
+      "type": "object",
+      "required": ["draw", "discard", "exhaust"],
+      "properties": {
+        "draw": {"type": "array", "items": {"type": "object"}},
+        "discard": {"type": "array", "items": {"type": "object"}},
+        "exhaust": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": false
+    },
+    "enemies": {"type": "array", "items": {"type": "object"}},
+    "relics": {"type": "array", "items": {"type": "object"}},
+    "potions": {"type": "array", "items": {"type": "object"}},
+    "player_powers": {"type": "array", "items": {"type": "object"}},
+    "orbs": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": false,
+  "x-action-contract": {
+    "version": "combat-action-0.1.0",
+    "supported_actions": ["play_card", "use_potion", "discard_potion", "end_turn"],
+    "selection": "score every legal candidate and supervise the unique human candidate index",
+    "opaque_binding_fields": ["entity_ref", "lineage_ref", "source_ref", "target_ref"]
+  }
+}

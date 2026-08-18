@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -172,23 +173,114 @@ def _recording_paths(source: Path) -> list[Path]:
     )
 
 
+def _recording_identity(path: Path) -> str:
+    """Read and verify only the two-record header needed for incremental lookup."""
+    header: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as stream:
+        for line_no in (1, 2):
+            line = stream.readline()
+            if not line or not line.endswith("\n"):
+                raise HumanRecordingError(f"{path}:{line_no}: missing or truncated recording header")
+            try:
+                header.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                raise HumanRecordingError(f"{path}:{line_no}: invalid JSON: {exc}") from exc
+    if [row.get("record_type") for row in header] != ["recorder_start", "run_start"]:
+        raise HumanRecordingError(f"{path}: missing recorder_start/run_start")
+    if header[0].get("sequence") != 0 or header[0].get("prev_record_sha256") != "0" * 64:
+        raise HumanRecordingError(f"{path}: invalid recorder_start chain header")
+    if header[0].get("record_sha256") != _hash_record(header[0]):
+        raise HumanRecordingError(f"{path}: recorder_start hash mismatch")
+    if (
+        header[1].get("sequence") != 1
+        or header[1].get("prev_record_sha256") != header[0].get("record_sha256")
+        or header[1].get("record_sha256") != _hash_record(header[1])
+    ):
+        raise HumanRecordingError(f"{path}: invalid run_start chain header")
+    run_id = header[1].get("payload", {}).get("run_id")
+    if not run_id:
+        raise HumanRecordingError(f"{path}: run_start has no run_id")
+    return str(run_id)
+
+
+def _sha256_zstd_payload(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as raw:
+        with zstd.ZstdDecompressor().stream_reader(raw) as reader:
+            for chunk in iter(lambda: reader.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest().upper()
+
+
+def _write_parquet_atomic(rows: list[dict[str, Any]], schema: pa.Schema, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    pq.write_table(pa.Table.from_pylist(rows, schema=schema), temporary, compression="zstd")
+    os.replace(temporary, path)
+
+
 def import_human_recordings(source: Path, *, include_partial: bool = True) -> dict[str, Any]:
     paths = _recording_paths(source)
     if not paths:
         raise HumanRecordingError(f"no sealed JSONL recordings found under {source}")
     HUMAN_RAW_ROOT.mkdir(parents=True, exist_ok=True)
     HUMAN_DATASET_ROOT.mkdir(parents=True, exist_ok=True)
-    episodes: list[dict[str, Any]] = []
-    transitions: list[dict[str, Any]] = []
-    rollbacks: list[dict[str, Any]] = []
+    episode_path = HUMAN_DATASET_ROOT / "episodes.parquet"
+    transition_path = HUMAN_DATASET_ROOT / "transitions.parquet"
+    rollback_path = HUMAN_DATASET_ROOT / "rollbacks.parquet"
+    manifest_path = HUMAN_DATASET_ROOT / "manifest.json"
+    existing_paths = (episode_path, transition_path, rollback_path, manifest_path)
+    if any(path.exists() for path in existing_paths) and not all(path.exists() for path in existing_paths):
+        raise HumanRecordingError("human dataset is incomplete; restore it or remove the derived snapshot before importing")
+    existing_manifest: dict[str, Any] = {}
+    if manifest_path.exists():
+        validate_human_dataset()
+        existing_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        episodes = pq.read_table(episode_path).to_pylist()
+        transitions = pq.read_table(transition_path).to_pylist()
+        rollbacks = pq.read_table(rollback_path).to_pylist()
+    else:
+        episodes = []
+        transitions = []
+        rollbacks = []
+    existing_episodes = {row["run_id"]: row for row in episodes}
+    source_sha_by_run = {
+        str(row["run_id"]): str(row["source_sha256"])
+        for row in existing_manifest.get("raw_files", [])
+        if row.get("run_id") and row.get("source_sha256")
+    }
     phase_counts: Counter[str] = Counter()
     action_counts: Counter[str] = Counter()
     action_arg_error_counts: Counter[str] = Counter()
     quality_counts: Counter[str] = Counter()
     commit_status_counts: Counter[str] = Counter()
-    imported_raw: list[Path] = []
+    new_episode_count = 0
+    skipped_episode_count = 0
+    metadata_cache_changed = False
+    processed_sources: dict[str, str] = {}
 
     for path in paths:
+        run_id = _recording_identity(path)
+        source_sha256 = sha256_file(path)
+        if run_id in processed_sources:
+            if processed_sources[run_id] != source_sha256:
+                raise HumanRecordingError(f"duplicate run_id has different source content: {run_id}")
+            skipped_episode_count += 1
+            continue
+        processed_sources[run_id] = source_sha256
+        if run_id in existing_episodes:
+            cached_source_sha256 = source_sha_by_run.get(run_id)
+            raw_path = Path(existing_episodes[run_id]["raw_path"])
+            if cached_source_sha256 is not None:
+                if cached_source_sha256 != source_sha256:
+                    raise HumanRecordingError(f"run_id collision with different immutable content: {run_id}")
+            elif not raw_path.exists() or _sha256_zstd_payload(raw_path) != source_sha256:
+                raise HumanRecordingError(f"run_id collision with different immutable content: {run_id}")
+            else:
+                source_sha_by_run[run_id] = source_sha256
+                metadata_cache_changed = True
+            skipped_episode_count += 1
+            continue
         records = read_and_verify_recording(path)
         meta = records[0]["payload"]
         live_schema = str(meta.get("schema_version", ""))
@@ -211,15 +303,21 @@ def import_human_recordings(source: Path, *, include_partial: bool = True) -> di
             raise HumanRecordingError(
                 f"{path}: {len(partial)} partial decisions; repair hooks or pass --include-partial to quarantine-tag them"
             )
-        run_id = str(start["run_id"])
+        if str(start["run_id"]) != run_id:
+            raise HumanRecordingError(f"{path}: run_id changed after header verification")
+        source_sha_by_run[run_id] = source_sha256
         run_transition_start = len(transitions)
         raw_path = HUMAN_RAW_ROOT / f"{run_id}.jsonl.zst"
         if raw_path.exists():
-            raise HumanRecordingError(f"immutable raw destination already exists: {raw_path}")
-        compressor = zstd.ZstdCompressor(level=9)
-        with path.open("rb") as src, raw_path.open("xb") as dst:
-            compressor.copy_stream(src, dst)
-        imported_raw.append(raw_path)
+            if _sha256_zstd_payload(raw_path) != source_sha256:
+                raise HumanRecordingError(f"immutable raw destination contains different content: {raw_path}")
+        else:
+            temporary_raw = raw_path.with_suffix(raw_path.suffix + ".tmp")
+            compressor = zstd.ZstdCompressor(level=9)
+            with path.open("rb") as src, temporary_raw.open("xb") as dst:
+                compressor.copy_stream(src, dst)
+            os.replace(temporary_raw, raw_path)
+        new_episode_count += 1
 
         invalidated_ranges: list[tuple[int, int, int]] = []
         quarantine_attempts: set[int] = set()
@@ -338,12 +436,43 @@ def import_human_recordings(source: Path, *, include_partial: bool = True) -> di
             }
         )
 
-    episode_path = HUMAN_DATASET_ROOT / "episodes.parquet"
-    transition_path = HUMAN_DATASET_ROOT / "transitions.parquet"
-    rollback_path = HUMAN_DATASET_ROOT / "rollbacks.parquet"
-    pq.write_table(pa.Table.from_pylist(episodes, schema=HUMAN_EPISODE_SCHEMA), episode_path, compression="zstd")
-    pq.write_table(pa.Table.from_pylist(transitions, schema=HUMAN_TRANSITION_SCHEMA), transition_path, compression="zstd")
-    pq.write_table(pa.Table.from_pylist(rollbacks, schema=HUMAN_ROLLBACK_SCHEMA), rollback_path, compression="zstd")
+    if not new_episode_count:
+        manifest = existing_manifest
+        if metadata_cache_changed:
+            manifest = {
+                **manifest,
+                "raw_files": [
+                    {
+                        "run_id": row["run_id"],
+                        "path": row["raw_path"],
+                        "sha256": row["raw_sha256"],
+                        "source_sha256": source_sha_by_run[row["run_id"]],
+                    }
+                    for row in episodes
+                ],
+            }
+            write_json_atomic(manifest_path, manifest)
+        return {
+            **manifest,
+            "new_episode_count": 0,
+            "skipped_episode_count": skipped_episode_count,
+        }
+    for row in episodes:
+        run_id = str(row["run_id"])
+        if run_id not in source_sha_by_run:
+            source_sha_by_run[run_id] = _sha256_zstd_payload(Path(row["raw_path"]))
+    _write_parquet_atomic(episodes, HUMAN_EPISODE_SCHEMA, episode_path)
+    _write_parquet_atomic(transitions, HUMAN_TRANSITION_SCHEMA, transition_path)
+    _write_parquet_atomic(rollbacks, HUMAN_ROLLBACK_SCHEMA, rollback_path)
+    phase_counts = Counter(row["phase"] for row in transitions)
+    action_rows = [(row, json.loads(row["action_json"])) for row in transitions]
+    action_counts = Counter(str(action.get("action_id") or "<missing>") for _, action in action_rows)
+    action_arg_error_counts = Counter(
+        str(action.get("action_id") or "<missing>")
+        for row, action in action_rows if row["capture_quality"] in {"partial_action_args", "partial_action_mismatch"}
+    )
+    quality_counts = Counter(row["capture_quality"] for row in transitions)
+    commit_status_counts = Counter(row["commit_status"] for row in transitions)
     coverage = {
         "generated_at": utc_now(), "phase_counts": dict(sorted(phase_counts.items())),
         "action_counts": dict(sorted(action_counts.items())),
@@ -363,8 +492,18 @@ def import_human_recordings(source: Path, *, include_partial: bool = True) -> di
     files = [episode_path, transition_path, rollback_path, HUMAN_DATASET_ROOT / "coverage.json"]
     manifest = {
         "schema_version": "human-dataset-0.3.0", "generated_at": utc_now(),
+        "update_mode": "incremental_append",
         "episode_count": len(episodes), "transition_count": len(transitions), "rollback_count": len(rollbacks),
-        "raw_files": [{"path": str(path), "sha256": sha256_file(path)} for path in imported_raw],
+        "new_episode_count": new_episode_count, "skipped_episode_count": skipped_episode_count,
+        "raw_files": [
+            {
+                "run_id": row["run_id"],
+                "path": row["raw_path"],
+                "sha256": row["raw_sha256"],
+                "source_sha256": source_sha_by_run[row["run_id"]],
+            }
+            for row in episodes
+        ],
         "files": [{"path": str(path), "sha256": sha256_file(path), "size": path.stat().st_size} for path in files],
     }
     write_json_atomic(HUMAN_DATASET_ROOT / "manifest.json", manifest)

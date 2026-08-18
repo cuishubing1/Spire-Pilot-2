@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2/combat-directive-v0.schema.json",
+  "title": "Spire Pilot 2 Combat Directive V0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scope",
+    "expires_at",
+    "objective",
+    "resource_policy",
+    "action_preferences",
+    "replan_policy",
+    "search_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "combat-directive-0.2.0"},
+    "scope": {"const": "current_combat"},
+    "expires_at": {"const": "combat_end"},
+    "objective": {
+      "type": "object",
+      "properties": {
+        "decision_value_scale": {"type": "number", "minimum": 0},
+        "hp_loss_weight": {"type": "number", "minimum": 0},
+        "immediate_hp_loss_weight": {"type": "number", "minimum": 0},
+        "death_penalty": {"type": "number", "minimum": 0},
+        "potion_cost": {"type": "number", "minimum": 0},
+        "max_hp_gain_weight": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "resource_policy": {
+      "type": "object",
+      "required": [
+        "max_potion_uses",
+        "potion_uses_so_far",
+        "preserve_potion_ids",
+        "acceptable_hp_loss_fraction"
+      ],
+      "properties": {
+        "max_potion_uses": {"type": ["integer", "null"], "minimum": 0},
+        "potion_uses_so_far": {"type": "integer", "minimum": 0},
+        "preserve_potion_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "acceptable_hp_loss_fraction": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_preferences": {
+      "type": "object",
+      "required": [
+        "forbidden_action_types",
+        "forbidden_candidate_ids",
+        "action_type_biases",
+        "target_biases",
+        "candidate_biases"
+      ],
+      "properties": {
+        "forbidden_action_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["play_card", "use_potion", "discard_potion", "end_turn"]
+          }
+        },
+        "forbidden_candidate_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "action_type_biases": {"$ref": "#/$defs/biasMap"},
+        "target_biases": {"$ref": "#/$defs/biasMap"},
+        "candidate_biases": {"$ref": "#/$defs/biasMap"}
+      },
+      "additionalProperties": false
+    },
+    "replan_policy": {
+      "type": "object",
+      "required": ["death_probability", "normalized_entropy", "top_probability_gap"],
+      "properties": {
+        "death_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "normalized_entropy": {"type": "number", "minimum": 0, "maximum": 1},
+        "top_probability_gap": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "search_policy": {
+      "type": "object",
+      "required": [
+        "mode",
+        "budget_class",
+        "max_wall_ms",
+        "determinizations",
+        "allow_policy_override",
+        "mechanic_plan_id"
+      ],
+      "properties": {
+        "mode": {"enum": ["policy_only", "one_step", "turn_boundary"]},
+        "budget_class": {"enum": ["low", "medium", "high"]},
+        "max_wall_ms": {"type": "integer", "minimum": 50, "maximum": 10000},
+        "determinizations": {"type": "integer", "minimum": 1, "maximum": 8},
+        "allow_policy_override": {"type": "boolean"},
+        "mechanic_plan_id": {"type": ["string", "null"], "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "biasMap": {
+      "type": "object",
+      "additionalProperties": {"type": "number", "minimum": -20, "maximum": 20}
+    }
+  },
+  "additionalProperties": false
+}

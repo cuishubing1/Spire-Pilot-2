@@ -1,0 +1,66 @@
+{
+  "search_version": "combat-search-0.2.0",
+  "algorithm": "determinized_puct",
+  "worker_count": 1,
+  "engine_restore": {
+    "mode": "cached_batch_auto_prepared"
+  },
+  "model_inference": {
+    "reuse_entity_encoding": true,
+    "reuse_precomputed_sample": true
+  },
+  "engine_transition_cache": {
+    "enabled": true,
+    "maximum_entries": 10000
+  },
+  "budgets": {
+    "low": 32,
+    "default": 64,
+    "high": 128,
+    "critical": 256
+  },
+  "adaptive_triggers": {
+    "low_entropy_max": 0.35,
+    "high_entropy_min": 0.65,
+    "small_top_probability_gap": 0.15,
+    "low_hp_fraction": 0.35,
+    "critical_hp_fraction": 0.18,
+    "high_death_probability": 0.12
+  },
+  "puct": {
+    "c_puct": 1.5,
+    "minimum_root_visits_per_legal_action": 2,
+    "root_determinization_count": 8,
+    "maximum_player_decision_depth": 16,
+    "root_dirichlet_noise": false
+  },
+  "root_selection": {
+    "selection_rule": "visit_count_then_risk",
+    "cvar_alpha": 0.25,
+    "mean_value_weight": 0.4,
+    "cvar_weight": 0.6,
+    "minimum_visits": 2,
+    "minimum_fraction_of_max_visits": 0.2,
+    "policy_fallback": {
+      "enabled": true,
+      "minimum_shared_determinizations": 4,
+      "maximum_death_probability": 0.2,
+      "maximum_death_probability_increase": 0.02,
+      "minimum_risk_adjusted_advantage": 0.0
+    }
+  },
+  "information_boundary": {
+    "use_actual_hidden_draw_order": false,
+    "determinize_visible_draw_multiset": true,
+    "replan_after_every_real_action": true
+  },
+  "leaf_evaluation": {
+    "use_policy_prior": true,
+    "use_value_distribution": false,
+    "use_independent_state_value_head": true,
+    "use_provisional_action_conditioned_resource_head": true,
+    "exact_terminal_outcome": true,
+    "exact_immediate_resource_deltas": true,
+    "unsupported_subdecision_penalty": 1.0
+  }
+}

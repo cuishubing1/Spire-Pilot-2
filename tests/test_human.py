@@ -84,6 +84,47 @@ def test_import_and_validate_complete_human_recording(tmp_path, monkeypatch):
     assert human.validate_human_dataset()["status"] == "PASS"
 
 
+def test_human_import_is_incremental_and_idempotent(tmp_path, monkeypatch):
+    source = tmp_path / "inbox"
+    source.mkdir()
+
+    def write_run(run_id, floor):
+        path = source / f"{run_id}.jsonl"
+        previous = _append(path, "recorder_start", {
+            "schema_version": "human-live-0.1.0", "actor_id": "anon-test",
+            "game": {"expected_game_version": "0.107.1", "expected_build": "23811903",
+                     "assembly_sha256": human.EXPECTED_ASSEMBLY_SHA256},
+        }, 0, "0" * 64)
+        previous = _append(path, "run_start", {"run_id": run_id}, 1, previous)
+        observation = {
+            "phase": "combat_play", "capture_quality": "complete",
+            "run": {"act": 1, "total_floor": floor, "room_type": "Monster"},
+            "legal_actions": [{"action_id": "end_turn", "args": {}}],
+        }
+        previous = _append(path, "decision", {
+            "run_id": run_id, "phase": "combat_play", "observation": observation,
+            "action": {"action_id": "end_turn", "args": {}},
+            "capture_quality": "complete", "content_scope": "base_game",
+        }, 2, previous)
+        _append(path, "run_end", {"run_id": run_id, "reason": "abandoned", "won": False}, 3, previous)
+
+    monkeypatch.setattr(human, "HUMAN_RAW_ROOT", tmp_path / "data" / "raw")
+    monkeypatch.setattr(human, "HUMAN_DATASET_ROOT", tmp_path / "data" / "dataset")
+    write_run("incremental-1", 1)
+    first = human.import_human_recordings(source)
+    assert first["new_episode_count"] == 1
+    write_run("incremental-2", 2)
+    second = human.import_human_recordings(source)
+    assert second["episode_count"] == 2
+    assert second["transition_count"] == 2
+    assert second["new_episode_count"] == 1
+    assert second["skipped_episode_count"] == 1
+    third = human.import_human_recordings(source)
+    assert third["episode_count"] == 2
+    assert third["new_episode_count"] == 0
+    assert third["skipped_episode_count"] == 2
+
+
 def test_v02_rollback_is_not_exported_as_normal_transition(tmp_path, monkeypatch):
     source = tmp_path / "inbox"
     source.mkdir()

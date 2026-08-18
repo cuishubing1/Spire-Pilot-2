@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2/combat-tool-v0.schema.json",
+  "title": "Spire Pilot 2 Combat Tool V0 Response",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "directive_version",
+    "status",
+    "model_provenance",
+    "chosen_action",
+    "chosen",
+    "top_k",
+    "ranked_actions",
+    "uncertainty",
+    "predicted_risk",
+    "capabilities",
+    "directive_effects",
+    "request_replan",
+    "search_request",
+    "applied_directive",
+    "mechanic_fact_count",
+    "inference_ms"
+  ],
+  "properties": {
+    "schema_version": {"const": "combat-tool-0.2.0"},
+    "directive_version": {"const": "combat-directive-0.2.0"},
+    "status": {"enum": ["ok", "directive_conflict_fallback"]},
+    "model_provenance": {
+      "type": "object",
+      "required": [
+        "checkpoint_sha256",
+        "model_version",
+        "vocabulary_sha256",
+        "dataset_index_sha256",
+        "source_manifest_sha256",
+        "device"
+      ],
+      "properties": {
+        "checkpoint_sha256": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"]},
+        "vocabulary_sha256": {"type": ["string", "null"]},
+        "dataset_index_sha256": {"type": ["string", "null"]},
+        "source_manifest_sha256": {"type": ["string", "null"]},
+        "device": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "transition_id": {"type": ["string", "null"]},
+    "combat_id": {"type": ["string", "null"]},
+    "chosen_action": {"type": "object"},
+    "chosen": {"$ref": "#/$defs/rankedAction"},
+    "top_k": {"type": "array", "items": {"$ref": "#/$defs/rankedAction"}},
+    "ranked_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/rankedAction"}
+    },
+    "uncertainty": {
+      "type": "object",
+      "required": ["normalized_entropy", "top_probability_gap"]
+    },
+    "predicted_risk": {
+      "type": "object",
+      "required": [
+        "source",
+        "death_probability",
+        "hp_loss_fraction",
+        "immediate_hp_loss_fraction",
+        "immediate_hp_loss_source",
+        "potion_spent",
+        "max_hp_delta"
+      ],
+      "properties": {
+        "source": {
+          "enum": ["candidate_resource_head", "state_value_head", "unavailable"]
+        },
+        "immediate_hp_loss_source": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "policy_ranking",
+        "candidate_resource_prediction",
+        "state_risk_prediction",
+        "visible_end_turn_damage",
+        "objective_reranking",
+        "hard_constraints",
+        "explicit_biases",
+        "search_execution"
+      ],
+      "properties": {
+        "policy_ranking": {"const": "active"},
+        "candidate_resource_prediction": {
+          "enum": ["diagnostic_on_policy", "unavailable"]
+        },
+        "state_risk_prediction": {
+          "enum": ["diagnostic_on_policy", "unavailable"]
+        },
+        "visible_end_turn_damage": {"enum": ["exact_rule", "unavailable"]},
+        "objective_reranking": {
+          "enum": ["experimental_on_policy", "inactive"]
+        },
+        "hard_constraints": {"const": "active"},
+        "explicit_biases": {"const": "active"},
+        "search_execution": {"const": "unavailable"}
+      },
+      "additionalProperties": false
+    },
+    "directive_effects": {
+      "type": "object",
+      "required": [
+        "objective_overrides_requested",
+        "objective_reranking_applied",
+        "ignored_objective_overrides",
+        "ignored_objective_reason"
+      ],
+      "properties": {
+        "objective_overrides_requested": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "objective_reranking_applied": {"type": "boolean"},
+        "ignored_objective_overrides": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "ignored_objective_reason": {
+          "enum": [null, "candidate_resource_head_unavailable", "decision_value_scale_zero"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "request_replan": {
+      "type": "object",
+      "required": ["required", "reasons"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "search_request": {
+      "type": "object",
+      "required": [
+        "mode",
+        "budget_class",
+        "max_wall_ms",
+        "determinizations",
+        "allow_policy_override",
+        "mechanic_plan_id",
+        "recommended_mode",
+        "execute_search",
+        "search_executed",
+        "trigger_reasons"
+      ],
+      "properties": {
+        "mode": {"enum": ["policy_only", "one_step", "turn_boundary"]},
+        "budget_class": {"enum": ["low", "medium", "high"]},
+        "max_wall_ms": {"type": "integer", "minimum": 50, "maximum": 10000},
+        "determinizations": {"type": "integer", "minimum": 1, "maximum": 8},
+        "allow_policy_override": {"type": "boolean"},
+        "mechanic_plan_id": {"type": ["string", "null"], "minLength": 1},
+        "recommended_mode": {"enum": ["policy_only", "one_step", "turn_boundary"]},
+        "execute_search": {"type": "boolean"},
+        "search_executed": {"const": false},
+        "trigger_reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "applied_directive": {"type": "object"},
+    "mechanic_fact_count": {"type": "integer", "minimum": 0},
+    "inference_ms": {"type": "number", "minimum": 0}
+  },
+  "$defs": {
+    "rankedAction": {
+      "type": "object",
+      "required": [
+        "candidate_index",
+        "probability",
+        "policy_probability",
+        "eligible",
+        "exclusion_reasons",
+        "candidate",
+        "engine_preview",
+        "mechanic_ids",
+        "score_breakdown",
+        "resource_prediction"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

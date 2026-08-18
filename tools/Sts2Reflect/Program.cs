@@ -78,7 +78,10 @@ static IEnumerable<string> IlReferences(MethodInfo method)
                     : module.ResolveMember(token, typeArgs, methodArgs);
             }
             catch { }
-            yield return $"IL_{offset:x4}: {opcode.Name} {value ?? $"token 0x{token:x8}"}";
+            var display = value is MemberInfo member
+                ? $"{member.DeclaringType?.FullName}::{member}"
+                : value?.ToString() ?? $"token 0x{token:x8}";
+            yield return $"IL_{offset:x4}: {opcode.Name} {display}";
         }
         else if (opcode == OpCodes.Ldc_I4_M1 || opcode == OpCodes.Ldc_I4_0 || opcode == OpCodes.Ldc_I4_1
             || opcode == OpCodes.Ldc_I4_2 || opcode == OpCodes.Ldc_I4_3 || opcode == OpCodes.Ldc_I4_4

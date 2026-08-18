@@ -1,0 +1,39 @@
+{
+  "schema_version": "combat-dataset-1.2.0",
+  "character_ids": [
+    "CHARACTER.IRONCLAD"
+  ],
+  "acts": [
+    1,
+    2,
+    3
+  ],
+  "eligibility_column": "is_training_eligible",
+  "required_combat_difficulty_tiers": [
+    "base_a0_a7",
+    "tough_a8",
+    "deadly_a9_a10"
+  ],
+  "minimum_stratum_combats_for_split_coverage": 6,
+  "split_seed": "sts2-v0.107.1-combat-v1",
+  "test_run_ids": [
+    "human-20260813T153218409Z-111dbff7862d4059970daa1469aaf9fe",
+    "human-20260814T180321448Z-0ddd4ca4386d48c492167a80e70b4692",
+    "human-20260815T053813220Z-1636e0d9abc04fdd9e97a305f6166ecb",
+    "human-20260815T141047831Z-52916ad5013b490aaa376086946d46bc",
+    "human-20260816T072143466Z-a05f3444b2d44537941bf60d5a4cace8"
+  ],
+  "test_run_constraints": {
+    "require_complete_context": true,
+    "require_victory": true,
+    "minimum_max_act": 3,
+    "minimum_max_floor": 48,
+    "required_ascensions": [
+      0
+    ]
+  },
+  "splits": {
+    "train": 0.9,
+    "validation": 0.1
+  }
+}

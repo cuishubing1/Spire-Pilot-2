@@ -1,0 +1,40 @@
+{
+  "schema_version": "combat-policy-training-0.1.0",
+  "seed": 20260815,
+  "model": {
+    "d_model": 128,
+    "nhead": 4,
+    "num_layers": 4,
+    "dim_feedforward": 512,
+    "dropout": 0.1,
+    "resource_value_heads": true,
+    "state_value_head": true,
+    "decision_value_scale": 1.0,
+    "hp_loss_weight": 2.0,
+    "immediate_hp_loss_weight": 4.0,
+    "death_penalty": 5.0,
+    "potion_cost": 0.25,
+    "max_hp_gain_weight": 0.25
+  },
+  "training": {
+    "batch_size": 64,
+    "epochs": 12,
+    "learning_rate": 0.0005,
+    "weight_decay": 0.0001,
+    "label_smoothing": 0.02,
+    "gradient_clip_norm": 1.0,
+    "early_stopping_patience": 4,
+    "freeze_action_resource_head": true,
+    "hp_loss_coefficient": 1.0,
+    "immediate_hp_loss_coefficient": 1.0,
+    "immediate_hp_loss_positive_weight": 8.0,
+    "death_coefficient": 0.5,
+    "death_positive_weight": 4.0,
+    "potion_coefficient": 0.25,
+    "max_hp_coefficient": 0.25,
+    "state_hp_loss_coefficient": 1.0,
+    "state_death_coefficient": 0.5,
+    "state_potion_coefficient": 0.25,
+    "state_max_hp_coefficient": 0.25
+  }
+}

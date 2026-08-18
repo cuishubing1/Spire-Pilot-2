@@ -7,6 +7,10 @@ from typing import Any
 
 from .archive import archive_game, test_archive_replay, verify_archive
 from .collector import Collector
+from .combat_dataset import build_combat_dataset, validate_combat_dataset
+from .combat_contract import build_combat_model_examples, validate_combat_model_examples
+from .combat_tensorizer import build_combat_vocabulary
+from .combat_value import build_combat_value_targets, validate_combat_value_targets
 from .constants import ARCHIVE_ROOT, CONFIG_PATH
 from .exporter import export_dataset
 from .fixtures import collect_fixtures
@@ -54,6 +58,23 @@ def build_parser() -> argparse.ArgumentParser:
     human_audit = sub.add_parser("audit-human", help="Audit raw HumanRecorder JSONL without importing it")
     human_audit.add_argument("source")
     sub.add_parser("validate-human", help="Validate imported human raw data and Parquet")
+    combat_build = sub.add_parser(
+        "build-combat-dataset",
+        help="Build or extend run-held-out test plus combat-level train/validation data",
+    )
+    combat_build.add_argument("--rebuild", action="store_true",
+                              help="recompute the derived combat dataset and all split assignments")
+    sub.add_parser("validate-combat-dataset", help="Validate combat grouping and split isolation")
+    combat_examples = sub.add_parser(
+        "build-combat-examples", help="Build or incrementally extend Combat Observation/Action V0 samples"
+    )
+    combat_examples.add_argument("--rebuild", action="store_true",
+                                 help="recompute every model-facing Combat V0 sample")
+    sub.add_parser("validate-combat-examples", help="Validate Combat V0 observations, candidates and labels")
+    combat_vocab = sub.add_parser("build-combat-vocab", help="Build or extend the train-only Combat V0 vocabulary")
+    combat_vocab.add_argument("--rebuild", action="store_true", help="reassign all vocabulary indices")
+    sub.add_parser("build-combat-value-targets", help="Derive per-decision combat resource targets")
+    sub.add_parser("validate-combat-value-targets", help="Validate derived combat resource targets")
     return parser
 
 
@@ -112,6 +133,20 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
         elif args.command == "validate-human":
             _print(validate_human_dataset())
+        elif args.command == "build-combat-dataset":
+            _print(build_combat_dataset(rebuild=args.rebuild))
+        elif args.command == "validate-combat-dataset":
+            _print(validate_combat_dataset())
+        elif args.command == "build-combat-examples":
+            _print(build_combat_model_examples(rebuild=args.rebuild))
+        elif args.command == "validate-combat-examples":
+            _print(validate_combat_model_examples())
+        elif args.command == "build-combat-vocab":
+            _print(build_combat_vocabulary(rebuild=args.rebuild))
+        elif args.command == "build-combat-value-targets":
+            _print(build_combat_value_targets())
+        elif args.command == "validate-combat-value-targets":
+            _print(validate_combat_value_targets())
         return 0
     except (ValidationFailure, Exception) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)

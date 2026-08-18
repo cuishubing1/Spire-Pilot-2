@@ -1,0 +1,21 @@
+{
+  "schema_version": "combat-counterfactual-ranker-training-0.1.0",
+  "seed": 20260818,
+  "counterfactual_dataset": "data/human/combat_v1/counterfactual_early60_v0/train_roots.jsonl",
+  "initialize_checkpoint": "artifacts/combat_policy_p2_encounter_residual_cuda/20260818T130748Z/model.pt",
+  "trainable_mode": "encounter_embedding",
+  "human_anchor_samples": 1024,
+  "human_anchor_batch_size": 128,
+  "validation_fraction": 0.2,
+  "epochs": 80,
+  "early_stopping_patience": 15,
+  "learning_rate": 0.003,
+  "weight_decay": 0.0,
+  "pairwise_coefficient": 1.0,
+  "teacher_best_action_coefficient": 4.0,
+  "policy_suboptimal_weight": 2.0,
+  "behavior_cloning_coefficient": 0.25,
+  "distillation_coefficient": 1.0,
+  "parameter_delta_coefficient": 0.001,
+  "max_human_validation_accuracy_drop": 0.005
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/sts2/combat-tool-request-v0.schema.json",
+  "title": "Spire Pilot 2 Combat Tool V0 Request",
+  "type": "object",
+  "required": ["schema_version", "sample"],
+  "properties": {
+    "schema_version": {"const": "combat-tool-request-0.1.0"},
+    "sample": {
+      "type": "object",
+      "required": ["observation", "candidates"]
+    },
+    "directive": {"type": ["object", "null"]},
+    "mechanic_facts": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "top_k": {"type": "integer", "minimum": 1, "maximum": 20}
+  },
+  "additionalProperties": false
+}
